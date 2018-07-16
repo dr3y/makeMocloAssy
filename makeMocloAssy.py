@@ -334,18 +334,19 @@ def pushDict(Dic,key,value):
         elif(type(value)==float):
             pval = 0.0
     Dic[key] =pval + value
-def findFilesDict(path,teststr = "promoter"):
+def findFilesDict(path=".",teststr = "promoter"):
     """gets a list of files/folders present in a path"""
     walkr = os.walk(path)
     dirlist = [a for a in walkr]
     expts = {}
     #print(dirlist)
     #for folder in dirlist[1:]:
-    folder = ['.']
+    folder = [path]
     #print(dirlist)
     for fle in dirlist[0][2]:
         if(fle[-3:]=='csv'):
             try:
+                print('{}\\{}'.format(folder[0],fle))
                 fline = open(folder[0]+'\\'+fle,'r').readline().split(',')
                 if(teststr in fline):
                     expts[fle[:-4]]='{}\\{}'.format(folder[0],fle)
@@ -740,9 +741,115 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
         ofle2 = open(sepfilename,"w")
         ofle2.write(outfile2)
         ofle2.close()
-def makeInteractive():
-    oplist = findFilesDict(".")
-    parts = findPartsListsDict(".\\partslist")
+outitems = []
+
+
+class assemblyFileMaker():
+    def __init__(self,mypath="."):
+        self.parts = findPartsListsDict(mypath+"\\partslist")
+        #txtdisabl = False
+        assemblies = []
+        self.fname1 = widgets.Text(
+            value="untitled",
+            placeholder = "type something",
+            description='Assembly File Name:',
+            disabled=False
+        )
+        self.drop2 = widgets.Dropdown(
+            options=self.parts,
+            width=100,
+            #value=2,
+            description='parts list:',
+        )
+        self.but = widgets.Button(
+            description='Select',
+            disabled=False,
+            button_style='', # 'success', 'info', 'warning', 'danger' or ''
+            tooltip='Click me',
+
+            #icon='check'
+        )
+        self.but.on_click(self.on_button_clicked)
+        self.cbox = widgets.HBox([self.fname1,self.drop2,self.but])
+        display(self.cbox)
+    def add_row(self,b):
+        self.addWidgetRow(labonly=False)
+        outcols = [widgets.VBox(a) for a in self.outitems ]
+        self.bigSheet.children=outcols
+        b.disabled=True
+        #print(b)
+    def remove_row(self,b):
+        print(b)
+    def on_button_clicked(self,b):
+        #txtdisabl = True
+        b.disabled=True
+        xl_file = pd.ExcelFile(self.drop2.value)
+        dfs = {sheet_name: xl_file.parse(sheet_name)
+                          for sheet_name in xl_file.sheet_names}
+        sheetlist = list(dfs.keys())
+        self.p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
+        self.collabels = ["Promoter","UTR","CDS","Terminator","vector1","vector2","name",""]
+        self.outitems = []
+        self.ddlay = widgets.Layout(width='75px',height='30px')
+        self.eblay = widgets.Layout(width='50px',height='30px')
+        self.currow = 0
+        self.addWidgetRow(labonly=True)
+        self.addWidgetRow(labonly=False)
+        #outitems+=[[labwidg,interwidg]]
+        outcols = [widgets.VBox(a) for a in self.outitems ]
+        self.bigSheet=widgets.HBox(outcols)
+        display(self.bigSheet)
+        self.fname1.disabled = True
+        #self.outcolnum = 0
+    def addWidgetRow(self,labonly=True):
+        self.currow +=1
+        outcolnum=0
+        for col in self.collabels:
+            if(labonly):
+                interwidg = widgets.Label(col)
+            else:
+
+                if(col=="name"):
+                    interwidg = widgets.Text(\
+                            layout=self.ddlay)
+                elif(col==""):
+                    but1 = widgets.Button(\
+                        description='+',
+                        button_style='success',
+                        tooltip='row '+str(self.currow),
+                        layout=self.eblay
+                    )
+                    but2 = widgets.Button(\
+                        description='-',
+                        button_style='danger',
+                        tooltip='row '+str(self.currow),
+                        layout=self.eblay
+                    )
+                    but1.on_click(self.add_row)
+                    but2.on_click(self.remove_row)
+                    interwidg =widgets.HBox([but1,but2])
+                else:
+                    if("vector" in col):
+                        coltext = "UNS"
+                    else:
+                        coltext = col
+                    interwidg = widgets.Dropdown(\
+                            options=list(self.p[self.p.type==coltext].part)+["None"],\
+                            layout=self.ddlay)
+            try:
+                self.outitems[outcolnum]+=[interwidg]
+            except IndexError:
+                self.outitems+=[[interwidg]]
+            outcolnum +=1
+
+
+def makeAssemblyFile(mypath="."):
+    """this function will assist the user with making assembly .csv files!"""
+    x=assemblyFileMaker(mypath=".")
+
+def makeInteractive(mypath="."):
+    oplist = findFilesDict(mypath+"\\assemblies")
+    parts = findPartsListsDict(mypath+"\\partslist")
 
     drop1 = widgets.Dropdown(
         options=oplist,
@@ -777,7 +884,9 @@ def makeInteractive():
         sheetlist = list(dfs.keys())
         p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
 
-        makeEchoFile(p,x,fname = drop1.value)
+        makeEchoFile(p,x,fname = drop1.value, \
+                    output = ".\\output\\output.csv",\
+                    sepfilename=".\\output\\outputLDV.csv")
 
         #print(drop1.value+" and "+drop2.value)
 
@@ -806,7 +915,9 @@ def runProgram():
         if(pickhand=="n"):
             makeHandFile(p,x)
         else:
-            makeEchoFile(p,x,fname = fname)
+            makeEchoFile(p,x,fname = drop1.value, \
+                        output = ".\\output\\output.csv",\
+                        sepfilename=".\\output\\outputLDV.csv")
     except ValueError as error:
         print("=========ERROR========")
         print(error)
