@@ -746,6 +746,10 @@ outitems = []
 
 class assemblyFileMaker():
     def __init__(self,mypath="."):
+        self.ddlay = widgets.Layout(width='75px',height='30px')
+        self.eblay = widgets.Layout(width='50px',height='30px')
+        self.sblay = widgets.Layout(width='100px',height='30px')
+        self.Vboxlay = widgets.Layout(width='130px',height='67px')
         self.parts = findPartsListsDict(mypath+"\\partslist")
         #txtdisabl = False
         assemblies = []
@@ -755,34 +759,77 @@ class assemblyFileMaker():
             description='Assembly File Name:',
             disabled=False
         )
+        self.DestWell = widgets.Text(
+            value="A1",
+            placeholder = "type something",
+            description='Dest Well:',
+            layout=self.Vboxlay,
+            disabled=True
+        )
         self.drop2 = widgets.Dropdown(
             options=self.parts,
             width=100,
             #value=2,
             description='parts list:',
         )
+        #print(self.drop2.keys)
         self.but = widgets.Button(
-            description='Select',
+            description='Start',
             disabled=False,
             button_style='', # 'success', 'info', 'warning', 'danger' or ''
-            tooltip='Click me',
+            layout=self.sblay,
+            tooltip='Click to start adding assemblies',
+
+            #icon='check'
+        )
+        self.finbut = widgets.Button(
+            description='Done!',
+            disabled=True,
+            button_style='warning',#, 'danger' or ''
+            layout=self.sblay,
+            tooltip='Finish and Save',
 
             #icon='check'
         )
         self.but.on_click(self.on_button_clicked)
-        self.cbox = widgets.HBox([self.fname1,self.drop2,self.but])
+        self.cbox = widgets.HBox([self.fname1,\
+                    widgets.VBox([self.drop2,self.DestWell]),\
+                    widgets.VBox([self.but,self.finbut],layout=self.Vboxlay)])
         display(self.cbox)
     def add_row(self,b):
-        self.addWidgetRow(labonly=False)
+        thisrow = int(b.tooltip[4:])
+        self.addWidgetRow(labonly=False,copyrow=thisrow)
         outcols = [widgets.VBox(a) for a in self.outitems ]
         self.bigSheet.children=outcols
-        b.disabled=True
+        #b.disabled=True
         #print(b)
     def remove_row(self,b):
-        print(b)
+        thisrow = int(b.tooltip[4:])
+        outcolnum=0
+        for col in self.outitems:
+            self.outitems[outcolnum]=self.outitems[outcolnum][:thisrow]+\
+                        self.outitems[outcolnum][thisrow+1:]
+
+            outcolnum +=1
+        newbutcol = []
+        newrow = 0
+        for a in self.outitems[-1]:
+            #print(a)
+            try:
+                a.children[0].tooltip = "row "+str(newrow)
+                a.children[1].tooltip = "row "+str(newrow)
+            except AttributeError:
+                pass
+            newrow +=1
+        outcols = [widgets.VBox(a) for a in self.outitems ]
+        self.bigSheet.children=outcols
+        #print(b)
     def on_button_clicked(self,b):
         #txtdisabl = True
         b.disabled=True
+        self.drop2.disabled = True
+        self.finbut.disabled = False
+        self.DestWell.disabled = False
         xl_file = pd.ExcelFile(self.drop2.value)
         dfs = {sheet_name: xl_file.parse(sheet_name)
                           for sheet_name in xl_file.sheet_names}
@@ -790,19 +837,17 @@ class assemblyFileMaker():
         self.p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
         self.collabels = ["Promoter","UTR","CDS","Terminator","vector1","vector2","name",""]
         self.outitems = []
-        self.ddlay = widgets.Layout(width='75px',height='30px')
-        self.eblay = widgets.Layout(width='50px',height='30px')
-        self.currow = 0
+
         self.addWidgetRow(labonly=True)
         self.addWidgetRow(labonly=False)
         #outitems+=[[labwidg,interwidg]]
         outcols = [widgets.VBox(a) for a in self.outitems ]
         self.bigSheet=widgets.HBox(outcols)
         display(self.bigSheet)
-        self.fname1.disabled = True
+
         #self.outcolnum = 0
-    def addWidgetRow(self,labonly=True):
-        self.currow +=1
+    def addWidgetRow(self,labonly=True,copyrow=None):
+
         outcolnum=0
         for col in self.collabels:
             if(labonly):
@@ -816,13 +861,13 @@ class assemblyFileMaker():
                     but1 = widgets.Button(\
                         description='+',
                         button_style='success',
-                        tooltip='row '+str(self.currow),
+                        tooltip='row '+str(len(self.outitems[0])-1),
                         layout=self.eblay
                     )
                     but2 = widgets.Button(\
                         description='-',
                         button_style='danger',
-                        tooltip='row '+str(self.currow),
+                        tooltip='row '+str(len(self.outitems[0])-1),
                         layout=self.eblay
                     )
                     but1.on_click(self.add_row)
@@ -833,8 +878,12 @@ class assemblyFileMaker():
                         coltext = "UNS"
                     else:
                         coltext = col
+                    prevval = ""
+                    if(not (copyrow==None)):
+                        prevval = self.outitems[outcolnum][copyrow].value
                     interwidg = widgets.Dropdown(\
-                            options=list(self.p[self.p.type==coltext].part)+["None"],\
+                            options=list(self.p[self.p.type==coltext].part)+[""],\
+                            value=prevval,\
                             layout=self.ddlay)
             try:
                 self.outitems[outcolnum]+=[interwidg]
