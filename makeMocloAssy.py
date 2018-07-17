@@ -346,7 +346,7 @@ def findFilesDict(path=".",teststr = "promoter"):
     for fle in dirlist[0][2]:
         if(fle[-3:]=='csv'):
             try:
-                print('{}\\{}'.format(folder[0],fle))
+                #print('{}\\{}'.format(folder[0],fle))
                 fline = open(folder[0]+'\\'+fle,'r').readline().split(',')
                 if(teststr in fline):
                     expts[fle[:-4]]='{}\\{}'.format(folder[0],fle)
@@ -750,7 +750,11 @@ class assemblyFileMaker():
         self.eblay = widgets.Layout(width='50px',height='30px')
         self.sblay = widgets.Layout(width='100px',height='30px')
         self.Vboxlay = widgets.Layout(width='130px',height='67px')
-        self.parts = findPartsListsDict(mypath+"\\partslist")
+        self.PlateLetters="ABCDEFGHIJKLMNOP"
+        self.PlateNumbers=(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)
+        self.PlateRowsCols=(16,24)
+        self.mypath = mypath
+        self.parts = findPartsListsDict(self.mypath+"\\partslist")
         #txtdisabl = False
         assemblies = []
         self.fname1 = widgets.Text(
@@ -792,6 +796,7 @@ class assemblyFileMaker():
             #icon='check'
         )
         self.but.on_click(self.on_button_clicked)
+        self.finbut.on_click(self.finishAndSave)
         self.cbox = widgets.HBox([self.fname1,\
                     widgets.VBox([self.drop2,self.DestWell]),\
                     widgets.VBox([self.but,self.finbut],layout=self.Vboxlay)])
@@ -835,7 +840,7 @@ class assemblyFileMaker():
                           for sheet_name in xl_file.sheet_names}
         sheetlist = list(dfs.keys())
         self.p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
-        self.collabels = ["Promoter","UTR","CDS","Terminator","vector1","vector2","name",""]
+        self.collabels = ["promoter","UTR","CDS","Terminator","vector1","vector2","enzyme","name",""]
         self.outitems = []
 
         self.addWidgetRow(labonly=True)
@@ -846,6 +851,38 @@ class assemblyFileMaker():
         display(self.bigSheet)
 
         #self.outcolnum = 0
+    def incrementWellPos(self,position):
+        """increments a 384 well plate location such as A1 to the next logical
+        position, going left to right, top to bottom"""
+        poslet = self.PlateLetters.index(position[0])
+        posnum = int(position[1:])
+        newposlet = poslet
+        newposnum = posnum+1
+        if(newposnum > self.PlateRowsCols[1]):
+            newposnum-=self.PlateRowsCols[1]
+            newposlet+=1
+        newposition = self.PlateLetters[newposlet]+str(newposnum)
+        return newposition
+    def finishAndSave(self,b):
+        outfiletext = ",".join(self.collabels[:-1]+["targwell"])+"\n"
+        outfname = self.fname1.value+".csv"
+        startPos = self.DestWell.value
+        curpos = startPos
+        for i in range(len(self.outitems[0]))[1:]:
+            outlst = []
+            for nam,col in zip(self.collabels,self.outitems):
+                if(nam != ""):
+                    outlst+=[col[i].value]
+            outlst+=[curpos]
+            curpos = self.incrementWellPos(curpos)
+            outfiletext+=",".join(outlst)+"\n"
+        with open(self.mypath+"\\assemblies\\"+outfname,"w") as outfle:
+            outfle.write(outfiletext)
+        print("done!")
+        display(pd.read_csv(self.mypath+"\\assemblies\\"+outfname))
+        b.disabled=True
+
+
     def addWidgetRow(self,labonly=True,copyrow=None):
 
         outcolnum=0
@@ -874,15 +911,23 @@ class assemblyFileMaker():
                     but2.on_click(self.remove_row)
                     interwidg =widgets.HBox([but1,but2])
                 else:
-                    if("vector" in col):
-                        coltext = "UNS"
-                    else:
-                        coltext = col
+                    oplist = []
                     prevval = ""
                     if(not (copyrow==None)):
                         prevval = self.outitems[outcolnum][copyrow].value
+                    if("vector" in col):
+                        #coltext = "UNS"
+                        oplist = list(self.p[(self.p.type=="UNS")|(self.p.type=="vector")].part)+[""]
+                    elif(col=="enzyme"):
+                        oplist =["BsaI","BbsI","gibson"]
+                        if(prevval == ""):
+                            prevval = "BsaI"
+                    else:
+                        oplist = list(self.p[(self.p.type==col)|(self.p.type=="construct")].part)+[""]
+
+                    #else:
                     interwidg = widgets.Dropdown(\
-                            options=list(self.p[self.p.type==coltext].part)+[""],\
+                            options=oplist,\
                             value=prevval,\
                             layout=self.ddlay)
             try:
