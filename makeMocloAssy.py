@@ -18,6 +18,8 @@ from Bio.Restriction import AarI
 from copy import deepcopy as dc
 import ipywidgets as widgets
 from collections import defaultdict
+from IPython.display import FileLink, FileLinks
+
 
 enzymes = \
           {"BsaI":BsaI,
@@ -193,7 +195,7 @@ def echoline(swell,dwell,tvol,sptype = source,spname = "Source[1]",\
     #    sptype = ptypedict[platebc]
     return "{},{},{},{},,,,,{},{},{}\n".format(spname,platebc,sptype,swell,\
                                                             dpname,dwell,tvol)
-def echoSinglePart(partDF,partname,partfm,dwell):
+def echoSinglePart(partDF,partname,partfm,dwell,printstuff=True):
     """calculates how much of a single part to put in for a number of fm."""
     try:
         pwell = partDF[partDF.part==partname].well.iloc[0]
@@ -211,9 +213,10 @@ def echoSinglePart(partDF,partname,partfm,dwell):
     pconc = pconc.iloc[0]
     pplate = partDF[partDF.part==partname]["platebc"].iloc[0]
     platet = partDF[partDF.part==partname]["platetype"].iloc[0]
-    e1,e2 = echoPipet(partfm,pconc,pwell,dwell,sourceplate=pplate,sptype=platet)
+    e1,e2 = echoPipet(partfm,pconc,pwell,dwell,sourceplate=pplate,sptype=platet,\
+                                                    printstuff=printstuff)
     return e1,e2,pDseq,pplate,platet
-def echoPipet(partFm,partConc,sourcewell,destwell,sourceplate=None,sptype=None):
+def echoPipet(partFm,partConc,sourcewell,destwell,sourceplate=None,sptype=None,printstuff=True):
     """does the calculation to convert femtomoles to volumes, and returns the finished echo line"""
     pvol = (partFm/partConc)*1000
     evol = int(pvol)
@@ -221,10 +224,12 @@ def echoPipet(partFm,partConc,sourcewell,destwell,sourceplate=None,sptype=None):
                     #better safe than sorry and put in one droplet.
         evol = 25
     if(sourceplate==None):
-        print("===> transfer from {} to {}, {} nl".format(sourcewell,destwell,evol))
+        if(printstuff):
+            print("===> transfer from {} to {}, {} nl".format(sourcewell,destwell,evol))
         echostring = echoline(sourcewell,destwell,evol)
     else:
-        print("===> transfer from {}, plate {} to {}, {} nl".format(sourcewell,sourceplate,destwell,evol))
+        if(printstuff):
+            print("===> transfer from {}, plate {} to {}, {} nl".format(sourcewell,sourceplate,destwell,evol))
         echostring = echoline(sourcewell,destwell,evol,spname =sourceplate,sptype= sptype,platebc = sourceplate)
     return echostring, evol
 
@@ -508,7 +513,7 @@ def chewback(seqtochew,chewamt,end="fiveprime"):
 
 def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
             output = "output.csv",selenzyme=selenzyme,fname="recentassembly",\
-            protocolsDF=None,sepfiles=True,sepfilename="outputLDV.csv"):
+            protocolsDF=None,sepfiles=True,sepfilename="outputLDV.csv",printstuff=True):
     """makes an echo csv using the given list of assemblies and source plate of
     parts..
     inputs:
@@ -543,7 +548,7 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
     _,fname = os.path.split(fname)
     if("." in fname):
         fname = fname[:fname.index(".")]
-        print("saving in folder ./DNA/{}".format(fname))
+
     #the following is for making a spreadsheet style sequence list for performing further assemblies
     prodSeqSpread = "well,part,description,type,left,right,conc (nM),date,numvalue,sequence,circular,5pend,3pend,length\n"
     prevplate = None
@@ -576,7 +581,8 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                 partsFm = gibFm
                 vectorFm = gibvecFm
         water = float(curprot[curprot.component=="dnasln"].volume)*1000 #total amount of water, to start with
-        print("assembling with "+selenzyme)
+        if(printstuff):
+            print("assembling with "+selenzyme)
         aind = assembly.index[0] #necessary for dataframes probably because I'm dumb
         frags = []
         if(not selenzyme == "gibson"):
@@ -616,7 +622,9 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                                 nefrags+=[pcs]
                 allprod = DPallCombDseq(nefrags)
                 goodprod = []
-                newpath = dnaPath+fname
+                newpath = os.path.join(dnaPath,fname)
+                if(printstuff):
+                    print("saving in folder {}".format(newpath))
                 Cname = ""
                 try:
                     #this part gathers the "name" column to create the output sequence
@@ -625,9 +633,11 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                     Cname = ""
                 if(Cname == "" or str(Cname) == "nan"):
                     Cname = "well"+dwell
-                print("Parts in construct {}".format(Cname))
+                if(printstuff):
+                    print("Parts in construct {}".format(Cname))
                 if not os.path.exists(newpath):
-                    print("made dirs!")
+                    if(printstuff):
+                        print("made dirs!")
                     os.makedirs(newpath)
 
                 num = 0
@@ -654,7 +664,8 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                                         dwell,un_prod,          selenzyme,nowdate,prod,booltopo,0,0,len(prod))
                     wout.close()
                 assembend = ["y","ies"][int(len(goodprod)>1)]
-                print("Detected {} possible assembl{}".format(len(goodprod),assembend))
+                if(printstuff):
+                    print("Detected {} possible assembl{}".format(len(goodprod),assembend))
                 frags = []
                 if(water <=0):
                     print("WARNING!!!! water <=0 in well {}".format(dwell))
@@ -667,7 +678,8 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                         #print("platewater")
                         outfile += echoline(waterwell,dwell,ewat,spname =prevplate,sptype=prevtype,platebc = prevplate)
                     #add water to the well!
-                print("")
+                if(printstuff):
+                    print("")
             elif(col == "comment"):#skip this column!
                 pass
             elif(col == "enzyme"):
@@ -682,7 +694,8 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                 #part = assembly[col][aind] #well corresponding to the part we want
                 if(str(part) == 'nan'):
                     #this means we skip this part
-                    print("skip one!")
+                    if(printstuff):
+                        print("skip one!")
                 else:
                     part = assembly[col][aind]
                     #this is the name of the part!
@@ -699,7 +712,7 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                                 #use the vector at lower concentration!!
                                 useFm = t_vecFm
                             e1,e2,pDseq,prevplate,prevtype = echoSinglePart(parts,\
-                                                        subpart,useFm,dwell)
+                                    subpart,useFm,dwell,printstuff=printstuff)
                             frags+=[pDseq]
                             evol += e2
                             if(sepfiles):
@@ -717,7 +730,7 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                             #use the vector at lower concentration!!
                             useFm = vectorFm
                         e1,e2,pDseq,prevplate,prevtype = echoSinglePart(parts,\
-                                                    part,useFm,dwell)
+                                    part,useFm,dwell,printstuff=printstuff)
                         frags+=[pDseq]
                         evol += e2
                         if(sepfiles):
@@ -733,14 +746,18 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
     pspread.close()
     seqdispDF = pd.read_csv(os.path.join(newpath,fname+".csv"),usecols=["well","part","circular","length"])
     display(seqdispDF)
+    display(FileLink(os.path.join(newpath,fname+".csv")))
     ofle = open(output,"w")
     ofle.write(outfile)
     ofle.close()
+    display(FileLink(output))
     if(sepfiles and (len(outfile2) > f2init)):
-        print("wrote LDV steps in {}".format(sepfilename))
+        if(printstuff):
+            print("wrote LDV steps in {}".format(sepfilename))
         ofle2 = open(sepfilename,"w")
         ofle2.write(outfile2)
         ofle2.close()
+        display(FileLink(sepfilename))
 outitems = []
 
 
@@ -939,7 +956,7 @@ def makeAssemblyFile(mypath="."):
     """this function will assist the user with making assembly .csv files!"""
     x=assemblyFileMaker(mypath=".")
 
-def makeInteractive(mypath="."):
+def makeInteractive(mypath=".",printstuff=True):
     oplist = findFilesDict(os.path.join(mypath,"assemblies"))
     parts = findPartsListsDict(os.path.join(mypath,"partslist"))
 
@@ -976,7 +993,8 @@ def makeInteractive(mypath="."):
 
         makeEchoFile(p,x,fname = drop1.value, \
                     output = os.path.join(".","output","output.csv"),\
-                    sepfilename=os.path.join(".","output","outputLDV.csv"))
+                    sepfilename=os.path.join(".","output","outputLDV.csv"),\
+                    printstuff=printstuff)
 
         #print(drop1.value+" and "+drop2.value)
 
