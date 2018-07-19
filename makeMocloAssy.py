@@ -347,21 +347,21 @@ def findFilesDict(path=".",teststr = "promoter"):
         if(fle[-3:]=='csv'):
             try:
                 #print('{}\\{}'.format(folder[0],fle))
-                fline = open(folder[0]+'\\'+fle,'r').readline().split(',')
+                fline = open(os.path.join(folder[0],fle),'r').readline().split(',')
                 if(teststr in fline):
-                    expts[fle[:-4]]='{}\\{}'.format(folder[0],fle)
+                    expts[fle[:-4]]=os.path.join(folder[0],fle)
             except IOError:
                 pass
         if(fle[-4:]=='xlsx'):
             try:
-                xl_file = pd.read_excel(folder[0]+'\\'+fle)
+                xl_file = pd.read_excel(os.path.join(folder[0],fle))
                 #dfs = {sheet_name: xl_file.parse(sheet_name)
                 #          for sheet_name in xl_file.sheet_names}
                 #print(dfs.keys()
                 #print(xl_file.columns)
                 if(teststr in xl_file.columns):
                     #print("found")
-                    expts[fle[:-5]]='{}\\{}'.format(folder[0],fle)
+                    expts[fle[:-5]]=os.path.join(folder[0],fle)
             except (IOError,KeyError) as e:
                 pass
     return expts
@@ -375,13 +375,13 @@ def findPartsListsDict(path,teststr = "parts_1"):
         #print fle
         if((fle[-4:]=='xlsx') or (fle[-4:]=='xlsm')):
             try:
-                xl_file = pd.ExcelFile(path+'\\'+fle)
+                xl_file = pd.ExcelFile(os.path.join(path,fle))
                 dfs = {sheet_name: xl_file.parse(sheet_name)
                           for sheet_name in xl_file.sheet_names}
                 #print(dfs)
                 #print(dfs.keys())
                 if(teststr in list(dfs.keys())[0]):
-                    expts[fle[:-5]] = '{}\\{}'.format(path,fle)
+                    expts[fle[:-5]] = os.path.join(path,fle)
             except IOError:
                 pass
     return expts
@@ -540,7 +540,7 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
     #defines an assembly, with the columns representing what parts go in.
     #this may not be ideal but it's fairly human readable and we only do
     #four parts + vector for each assembly.
-    fname = fname.split("\\")[-1]
+    _,fname = os.path.split(fname)
     if("." in fname):
         fname = fname[:fname.index(".")]
         print("saving in folder ./DNA/{}".format(fname))
@@ -634,10 +634,10 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                 for prod in allprod:
                     Cnamenum = Cname
                     if(len(allprod) > 1):
-                        wout = open(newpath+"\\"+Cname+"_"+str(num)+".gbk","w")
+                        wout = open(os.path.join(newpath,Cname+"_"+str(num)+".gbk"),"w")
                         Cnamenum = Cname+"_"+str(num)
                     else:
-                        wout = open(newpath+"\\"+Cname+".gbk","w")
+                        wout = open(os.path.join(newpath,Cname+".gbk"),"w")
                     if(bluntLeft(prod) and bluntRight(prod)):
                         num+=1
                         goodprod+=[prod]
@@ -728,10 +728,10 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                         else:
                             outfile+= e1
                     water=water-evol
-    pspread = open(newpath+"\\"+fname+".csv","w")
+    pspread = open(os.path.join(newpath,fname+".csv"),"w")
     pspread.write(prodSeqSpread)
     pspread.close()
-    seqdispDF = pd.read_csv(newpath+"\\"+fname+".csv",usecols=["well","part","circular","length"])
+    seqdispDF = pd.read_csv(os.path.join(newpath,fname+".csv"),usecols=["well","part","circular","length"])
     display(seqdispDF)
     ofle = open(output,"w")
     ofle.write(outfile)
@@ -754,7 +754,7 @@ class assemblyFileMaker():
         self.PlateNumbers=(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)
         self.PlateRowsCols=(16,24)
         self.mypath = mypath
-        self.parts = findPartsListsDict(self.mypath+"\\partslist")
+        self.parts = findPartsListsDict(os.path.join(self.mypath,"partslist"))
         #txtdisabl = False
         assemblies = []
         self.fname1 = widgets.Text(
@@ -876,10 +876,10 @@ class assemblyFileMaker():
             outlst+=[curpos]
             curpos = self.incrementWellPos(curpos)
             outfiletext+=",".join(outlst)+"\n"
-        with open(self.mypath+"\\assemblies\\"+outfname,"w") as outfle:
+        with open(os.path.join(self.mypath,"assemblies",outfname),"w") as outfle:
             outfle.write(outfiletext)
         print("done!")
-        display(pd.read_csv(self.mypath+"\\assemblies\\"+outfname))
+        display(pd.read_csv(os.path.join(self.mypath,"assemblies",outfname)))
         b.disabled=True
 
 
@@ -942,8 +942,8 @@ def makeAssemblyFile(mypath="."):
     x=assemblyFileMaker(mypath=".")
 
 def makeInteractive(mypath="."):
-    oplist = findFilesDict(mypath+"\\assemblies")
-    parts = findPartsListsDict(mypath+"\\partslist")
+    oplist = findFilesDict(os.path.join(mypath,"assemblies"))
+    parts = findPartsListsDict(os.path.join(mypath,"partslist"))
 
     drop1 = widgets.Dropdown(
         options=oplist,
@@ -979,8 +979,8 @@ def makeInteractive(mypath="."):
         p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
 
         makeEchoFile(p,x,fname = drop1.value, \
-                    output = ".\\output\\output.csv",\
-                    sepfilename=".\\output\\outputLDV.csv")
+                    output = os.path.join(".","output","output.csv"),\
+                    sepfilename=os.path.join(".","output","outputLDV.csv"))
 
         #print(drop1.value+" and "+drop2.value)
 
@@ -1010,8 +1010,8 @@ def runProgram():
             makeHandFile(p,x)
         else:
             makeEchoFile(p,x,fname = drop1.value, \
-                        output = ".\\output\\output.csv",\
-                        sepfilename=".\\output\\outputLDV.csv")
+                        output = os.path.join(".","output","output.csv"),\
+                        sepfilename=os.path.join(".","output","outputLDV.csv"))
     except ValueError as error:
         print("=========ERROR========")
         print(error)
