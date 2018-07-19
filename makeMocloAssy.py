@@ -804,7 +804,7 @@ class assemblyFileMaker():
             #icon='check'
         )
         self.finbut = widgets.Button(
-            description='Done!',
+            description='Save!',
             disabled=True,
             button_style='warning',#, 'danger' or ''
             layout=self.sblay,
@@ -893,9 +893,9 @@ class assemblyFileMaker():
             outfiletext+=",".join(outlst)+"\n"
         with open(os.path.join(self.mypath,"assemblies",outfname),"w") as outfle:
             outfle.write(outfiletext)
-        print("done!")
+        print("wrote {}".format(os.path.join(self.mypath,"assemblies",outfname)))
         display(pd.read_csv(os.path.join(self.mypath,"assemblies",outfname)))
-        b.disabled=True
+        #b.disabled=True
 
 
     def addWidgetRow(self,labonly=True,copyrow=None):
