@@ -1,0 +1,15 @@
+Source Plate Name,Source Plate Barcode,Source Plate Type,Source Well,    Sample ID,Sample Name,Sample Group,Sample Comment,Destination Plate Name,    Destination Well,Transfer Volume
+ASSGGA04,ASSGGA04,384PP_AQ_BP,F4,,,,,Destination[1],A1,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,F8,,,,,Destination[1],A1,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,B17,,,,,Destination[1],A1,163
+ASSGGA04,ASSGGA04,384PP_AQ_BP,X12,,,,,Destination[1],A1,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,C1,,,,,Destination[1],A1,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,C4,,,,,Destination[1],A1,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,P23,,,,,Destination[1],A1,25
+ASSGGA04,ASSGGA04,384PP_AQ_BP,F4,,,,,Destination[1],A2,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,F8,,,,,Destination[1],A2,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,C12,,,,,Destination[1],A2,298
+ASSGGA04,ASSGGA04,384PP_AQ_BP,X12,,,,,Destination[1],A2,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,C1,,,,,Destination[1],A2,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,C4,,,,,Destination[1],A2,200
+ASSGGA04,ASSGGA04,384PP_AQ_BP,P23,,,,,Destination[1],A2,25
