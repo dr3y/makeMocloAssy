@@ -835,9 +835,7 @@ class assemblyFileMaker():
         self.drop2.disabled = True
         self.finbut.disabled = False
         self.DestWell.disabled = False
-        xl_file = pd.read_excel(self.drop2.value,None)
-        dfs = {sheet_name: xl_file.parse(sheet_name)
-                          for sheet_name in xl_file.sheet_names}
+        dfs = pd.read_excel(self.drop2.value,None)
         sheetlist = list(dfs.keys())
         self.p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
         self.collabels = ["promoter","UTR","CDS","Terminator","vector1","vector2","enzyme","name",""]
@@ -967,14 +965,12 @@ def makeInteractive(mypath="."):
     #display(button)
     #print(oplist)
     def on_button_clicked(b):
-        xl_file = pd.read_excel(drop2.value,None)
+        dfs = pd.read_excel(drop2.value,None)
         #print(drop1.value)
         if(drop1.value[-4:]=="xlsx" or drop1.value[-3:]=="xls"):
             x=pd.read_excel(drop1.value)
         else:
             x=pd.read_csv(drop1.value)
-        dfs = {sheet_name: xl_file.parse(sheet_name)
-                          for sheet_name in xl_file.sheet_names}
         sheetlist = list(dfs.keys())
         p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
 
