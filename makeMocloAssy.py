@@ -50,8 +50,8 @@ gibassy = \
 ggaPD = pd.DataFrame(gga[1:],columns=gga[0]) #this just turns it into a data frame
 gibassyPD = pd.DataFrame(gibassy[1:],columns=gibassy[0])
 
-ggaFm = 8.0
-ggavecGm = 8.0
+ggaFm = 6.0
+ggavecGm = 6.0
 gibFm = 6.0
 gibvecFm = 6.0
 partsFm = ggaFm  #default is gga
@@ -62,7 +62,7 @@ ptypedict = {
             "ASSGIB01":"384LDV_PLUS_AQ_BP",
             "ASSGIB02":"384PP_AQ_BP"}
 waterwell = "P23" #in your source plate, include one well that is just full of water.
-dnaPath = ".\\DNA\\"
+dnaPath = os.path.join(".","DNA")
 
 #go down and look at makeEchoFile
 
@@ -91,19 +91,19 @@ def findExpts(path):
     for fle in dirlist[0][2]:
         if(fle[-3:]=='csv'):
             try:
-                fline = open(folder[0]+'\\'+fle,'r').readline().split(',')
+                fline = open(os.path.join(folder[0],fle),'r').readline().split(',')
                 if("promoter" in fline):
-                    expts+=[('{}\\{}'.format(folder[0],fle),fle[:-4])]
+                    expts+=[(os.path.join(folder[0],fle),fle[:-4])]
             except IOError:
                 pass
         if(fle[-4:]=='xlsx'):
             try:
-                xl_file = pd.ExcelFile(folder[0]+'\\'+fle)
+                xl_file = pd.read_excel(os.path.join(folder[0],fle),None)
                 dfs = {sheet_name: xl_file.parse(sheet_name)
                           for sheet_name in xl_file.sheet_names}
                 #print(dfs.keys()
                 if(dfs["Sheet1"].columns[0] == "promoter"):
-                    expts+=[('{}\\{}'.format(folder[0],fle),fle[:-5])]
+                    expts+=[(os.path.join(folder[0],fle),fle[:-5])]
             except (IOError,KeyError) as e:
                 pass
     return sorted(expts)[::-1]
@@ -118,12 +118,12 @@ def findPartsLists(path):
         #print fle
         if(fle[-4:]=='xlsx'):
             try:
-                xl_file = pd.ExcelFile(path+'\\'+fle)
+                xl_file = pd.read_excel(os.path.join(path,fle),None)
                 dfs = {sheet_name: xl_file.parse(sheet_name)
                           for sheet_name in xl_file.sheet_names}
                 #print(dfs.keys()
                 if("parts" in list(dfs.keys())[0]):
-                    expts+=[('{}\\{}'.format(path,fle),fle[:-4])]
+                    expts+=[(os.path.join(path,fle),fle[:-4])]
             except IOError:
                 pass
     return sorted(expts)[::-1]
@@ -134,7 +134,7 @@ def pickPartsList():
     of each part at minimum, but better to have more stuff. Check my example
     file."""
     print("Searching for compatible parts lists...")
-    pllist = findPartsLists(".\\partslist")
+    pllist = findPartsLists(os.path.join(".","partslist"))
     pickedlist = ''
     if(len(pllist) <=0):
         print("could not find any parts lists :(. Make sure they are in a \
@@ -151,7 +151,7 @@ def pickPartsList():
         else:
             userpick = int(input("type the number of your favorite! "))
             pickedlist = pllist[userpick][0]
-    openlist = pd.ExcelFile(pickedlist)
+    openlist = pd.read_excel(pickedlist,None)
     print("===================================")
     return openlist
 
@@ -375,9 +375,9 @@ def findPartsListsDict(path,teststr = "parts_1"):
         #print fle
         if((fle[-4:]=='xlsx') or (fle[-4:]=='xlsm')):
             try:
-                xl_file = pd.ExcelFile(os.path.join(path,fle))
-                dfs = {sheet_name: xl_file.parse(sheet_name)
-                          for sheet_name in xl_file.sheet_names}
+                dfs = pd.read_excel(os.path.join(path,fle),None)
+                #dfs = {sheet_name: xl_file.parse(sheet_name)
+                #          for sheet_name in xl_file.sheet_names}
                 #print(dfs)
                 #print(dfs.keys())
                 if(teststr in list(dfs.keys())[0]):
@@ -835,7 +835,7 @@ class assemblyFileMaker():
         self.drop2.disabled = True
         self.finbut.disabled = False
         self.DestWell.disabled = False
-        xl_file = pd.ExcelFile(self.drop2.value)
+        xl_file = pd.read_excel(self.drop2.value,None)
         dfs = {sheet_name: xl_file.parse(sheet_name)
                           for sheet_name in xl_file.sheet_names}
         sheetlist = list(dfs.keys())
@@ -967,7 +967,7 @@ def makeInteractive(mypath="."):
     #display(button)
     #print(oplist)
     def on_button_clicked(b):
-        xl_file = pd.ExcelFile(drop2.value)
+        xl_file = pd.read_excel(drop2.value,None)
         #print(drop1.value)
         if(drop1.value[-4:]=="xlsx" or drop1.value[-3:]=="xls"):
             x=pd.read_excel(drop1.value)
