@@ -893,7 +893,9 @@ class assemblyFileMaker():
             outfiletext+=",".join(outlst)+"\n"
         with open(os.path.join(self.mypath,"assemblies",outfname),"w") as outfle:
             outfle.write(outfiletext)
-        print("wrote {}".format(os.path.join(self.mypath,"assemblies",outfname)))
+        assemfpath = os.path.join(self.mypath,"assemblies",outfname)
+        #print("wrote {}".format())
+        display(FileLink(assemfpath))
         display(pd.read_csv(os.path.join(self.mypath,"assemblies",outfname)))
         #b.disabled=True
 
