@@ -774,6 +774,11 @@ class assemblyFileMaker():
         self.parts = findPartsListsDict(os.path.join(self.mypath,"partslist"))
         #txtdisabl = False
         assemblies = []
+        self.listEverything = widgets.Checkbox(
+            value=False,
+            description='List all parts',
+            disabled=False
+        )
         self.fname1 = widgets.Text(
             value="untitled",
             placeholder = "type something",
@@ -793,7 +798,7 @@ class assemblyFileMaker():
             #value=2,
             description='parts list:',
         )
-        #print(self.drop2.keys)
+        #print(self.drop2.style.keys)
         self.but = widgets.Button(
             description='Start',
             disabled=False,
@@ -814,7 +819,9 @@ class assemblyFileMaker():
         )
         self.but.on_click(self.on_button_clicked)
         self.finbut.on_click(self.finishAndSave)
-        self.cbox = widgets.HBox([self.fname1,\
+        self.listEverything.observe(self.on_listEverything_changed,names='value')
+        self.cbox = widgets.HBox([
+                    widgets.VBox([self.fname1,self.listEverything]),\
                     widgets.VBox([self.drop2,self.DestWell]),\
                     widgets.VBox([self.but,self.finbut],layout=self.Vboxlay)])
         display(self.cbox)
@@ -846,6 +853,37 @@ class assemblyFileMaker():
         outcols = [widgets.VBox(a) for a in self.outitems ]
         self.bigSheet.children=outcols
         #print(b)
+    def generateOptionsList(self,df,colname,prevval=None):
+        """come up with a list of options given a column name. This contains
+        a ton of specific code"""
+        oplist = []
+        if("vector" in colname):
+            oplist = list(self.p[(self.p.type=="UNS")|(self.p.type=="vector")].part)+[""]
+        elif(colname=="enzyme"):
+            oplist =["BsaI","BbsI","gibson"]
+            if(prevval == ""):
+                prevval = "BsaI"
+        else:
+            oplist = list(self.p[(self.p.type==col)].part)+[""]
+        if(not (prevval in oplist)):
+            oplist+=[prevval]
+        return oplist,prevval
+    def on_listEverything_changed(self,change):
+        """this triggers when you change the value of "listEverything".
+        Here we want to change the values in the drop down to correspond to either
+        (a) surrounding parts or
+        (b) the appropriate category
+        """
+        typewewant = type(widgets.Dropdown())
+
+            #this means we checked the box. Now change drop box's options
+        for col in self.outitems:
+            for item in col:
+                if(type(item)==typewewant):
+                    if(change['new']==True):
+                        item.options=
+                    else:
+
     def on_button_clicked(self,b):
         #txtdisabl = True
         b.disabled=True
@@ -932,17 +970,7 @@ class assemblyFileMaker():
                     prevval = ""
                     if(not (copyrow==None)):
                         prevval = self.outitems[outcolnum][copyrow].value
-                    if("vector" in col):
-                        #coltext = "UNS"
-                        oplist = list(self.p[(self.p.type=="UNS")|(self.p.type=="vector")].part)+[""]
-                    elif(col=="enzyme"):
-                        oplist =["BsaI","BbsI","gibson"]
-                        if(prevval == ""):
-                            prevval = "BsaI"
-                    else:
-                        oplist = list(self.p[(self.p.type==col)|(self.p.type=="construct")].part)+[""]
-
-                    #else:
+                    oplist, prevval = self.generateOptionsList(self.p,col,prevval)
                     interwidg = widgets.Dropdown(\
                             options=oplist,\
                             value=prevval,\
