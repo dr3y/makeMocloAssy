@@ -847,42 +847,50 @@ class assemblyFileMaker():
             try:
                 a.children[0].tooltip = "row "+str(newrow)
                 a.children[1].tooltip = "row "+str(newrow)
+                if(len(self.outitems[0])<=2):
+                    a.children[1].disabled=True
+                else:
+                    a.children[1].disabled=False
             except AttributeError:
                 pass
             newrow +=1
         outcols = [widgets.VBox(a) for a in self.outitems ]
         self.bigSheet.children=outcols
         #print(b)
-    def generateOptionsList(self,df,colname,prevval=None):
+    def generateOptionsList(self,df,colname,prevval=None,listmode=0):
         """come up with a list of options given a column name. This contains
         a ton of specific code"""
         oplist = []
-        if("vector" in colname):
-            oplist = list(self.p[(self.p.type=="UNS")|(self.p.type=="vector")].part)+[""]
-        elif(colname=="enzyme"):
-            oplist =["BsaI","BbsI","gibson"]
-            if(prevval == ""):
-                prevval = "BsaI"
+        if(listmode == 1 and colname != "enzyme"):
+            oplist = list(self.p.part)+[""]
         else:
-            oplist = list(self.p[(self.p.type==col)].part)+[""]
+            if("vector" in colname):
+                oplist = list(self.p[(self.p.type=="UNS")|(self.p.type=="vector")].part)+[""]
+            elif(colname=="enzyme"):
+                oplist =["BsaI","BbsI","gibson"]
+                if(prevval == ""):
+                    prevval = "BsaI"
+            else:
+                oplist = list(self.p[(self.p.type==colname)].part)+[""]
         if(not (prevval in oplist)):
             oplist+=[prevval]
         return oplist,prevval
     def on_listEverything_changed(self,change):
         """this triggers when you change the value of "listEverything".
-        Here we want to change the values in the drop down to correspond to either
+        Here we want to change the values in the drop down to correspond to
+        either
         (a) surrounding parts or
         (b) the appropriate category
         """
         typewewant = type(widgets.Dropdown())
-
-            #this means we checked the box. Now change drop box's options
+        #this means we checked the box. Now change drop box's options
         for col in self.outitems:
             for item in col:
                 if(type(item)==typewewant):
-                    if(change['new']==True):
-                        item.options=
-                    else:
+                    oplist,pval = self.generateOptionsList(self.p,\
+                                        col[0].value,item.value,change['new'])
+                    item.options=oplist
+                    item.value=pval
 
     def on_button_clicked(self,b):
         #txtdisabl = True
@@ -893,7 +901,7 @@ class assemblyFileMaker():
         dfs = pd.read_excel(self.drop2.value,None)
         sheetlist = list(dfs.keys())
         self.p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
-        self.collabels = ["promoter","UTR","CDS","Terminator","vector1","vector2","enzyme","name",""]
+        self.collabels = ["vector1","promoter","UTR","CDS","Terminator","vector2","enzyme","name",""]
         self.outitems = []
 
         self.addWidgetRow(labonly=True)
@@ -904,6 +912,26 @@ class assemblyFileMaker():
         display(self.bigSheet)
 
         #self.outcolnum = 0
+    def updatePartOptions(self):
+        """update the options available to each drop down, according to what
+        values are chosen in the other drop downs. For example, only allow
+        parts which are compatible"""
+        maxcols = len(self.outitems)-3
+        for colnum in range(maxcols):
+            for itemnum in range(len(self.outitems[colnum]))[1:]:
+                curitem = self.outitems[colnum][itemnum]
+                leftitem = 0
+                rightitem = 0
+                if(colnum == 0):
+                    leftitem = maxcols-1
+                else:
+                    leftitem = colnum-1
+                if(colnum == maxcols-1):
+                    rightitem = 0
+                else:
+                    rightitem=colnum+1
+                
+
     def incrementWellPos(self,position):
         """increments a 384 well plate location such as A1 to the next logical
         position, going left to right, top to bottom"""
@@ -956,11 +984,13 @@ class assemblyFileMaker():
                         tooltip='row '+str(len(self.outitems[0])-1),
                         layout=self.eblay
                     )
+
                     but2 = widgets.Button(\
                         description='-',
                         button_style='danger',
                         tooltip='row '+str(len(self.outitems[0])-1),
-                        layout=self.eblay
+                        layout=self.eblay,
+                        #disabled=disbut
                     )
                     but1.on_click(self.add_row)
                     but2.on_click(self.remove_row)
@@ -970,7 +1000,8 @@ class assemblyFileMaker():
                     prevval = ""
                     if(not (copyrow==None)):
                         prevval = self.outitems[outcolnum][copyrow].value
-                    oplist, prevval = self.generateOptionsList(self.p,col,prevval)
+                    oplist, prevval = self.generateOptionsList(self.p,col,\
+                                            prevval,self.listEverything.value)
                     interwidg = widgets.Dropdown(\
                             options=oplist,\
                             value=prevval,\
@@ -980,6 +1011,14 @@ class assemblyFileMaker():
             except IndexError:
                 self.outitems+=[[interwidg]]
             outcolnum +=1
+        for a in self.outitems[-1]:
+            try:
+                if(len(self.outitems[0])<=2):
+                    a.children[1].disabled=True
+                else:
+                    a.children[1].disabled=False
+            except AttributeError:
+                pass
 
 
 def makeAssemblyFile(mypath="."):
