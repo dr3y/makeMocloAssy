@@ -930,7 +930,17 @@ class assemblyFileMaker():
                     rightitem = 0
                 else:
                     rightitem=colnum+1
-                
+                leftoverhang = ""
+                rightoverhang = ""
+                leftvalue = self.outitems[leftitem][itemnum].value
+                rightvalue = self.outitems[rightitem][itemnum].value
+                logiclist = (True,)*len(self.p)
+                if(leftvalue!=""):
+                    logiclist &= (self.p.left==self.p[self.p.part==leftvalue].right.iloc[0])
+                if(rightvalue!=""):
+                    logiclist &= (self.p.right==self.p[self.p.part==rightvalue].left.iloc[0])
+                oplist = self.generateOptionsList(self.p[logiclist],\
+                                    col[0].value,item.value,change['new'])
 
     def incrementWellPos(self,position):
         """increments a 384 well plate location such as A1 to the next logical
