@@ -763,12 +763,14 @@ outitems = []
 
 class assemblyFileMaker():
     def __init__(self,mypath="."):
+        self.holdup=False
         self.ddlay = widgets.Layout(width='75px',height='30px')
         self.eblay = widgets.Layout(width='50px',height='30px')
         self.sblay = widgets.Layout(width='100px',height='30px')
         self.Vboxlay = widgets.Layout(width='130px',height='67px')
         self.PlateLetters="ABCDEFGHIJKLMNOP"
-        self.PlateNumbers=(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24)
+        self.PlateNumbers=(1,2,3,4,5,6,7,8,9,10,11,12,\
+                                13,14,15,16,17,18,19,20,21,22,23,24)
         self.PlateRowsCols=(16,24)
         self.mypath = mypath
         self.parts = findPartsListsDict(os.path.join(self.mypath,"partslist"))
@@ -834,12 +836,22 @@ class assemblyFileMaker():
         #print(b)
     def remove_row(self,b):
         thisrow = int(b.tooltip[4:])
-        outcolnum=0
-        for col in self.outitems:
-            self.outitems[outcolnum]=self.outitems[outcolnum][:thisrow]+\
-                        self.outitems[outcolnum][thisrow+1:]
+        #outcolnum=0
+        cleared = False
+        for colnum in list(range(len(self.outitems))[:-3])\
+                                                    +[len(self.outitems)-2]:
+            pvalue = self.outitems[colnum][thisrow].value
+            if(pvalue != ""):
+                cleared = True
+            self.outitems[colnum][thisrow].value = ""
+        if(cleared):
+            return
 
-            outcolnum +=1
+        for colnum in range(len(self.outitems)):
+            self.outitems[colnum]=self.outitems[colnum][:thisrow]+\
+                        self.outitems[colnum][thisrow+1:]
+
+            #outcolnum +=1
         newbutcol = []
         newrow = 0
         for a in self.outitems[-1]:
@@ -862,16 +874,17 @@ class assemblyFileMaker():
         a ton of specific code"""
         oplist = []
         if(listmode == 1 and colname != "enzyme"):
-            oplist = list(self.p.part)+[""]
+            oplist = sorted(list(df.part))+[""]
         else:
             if("vector" in colname):
-                oplist = list(self.p[(self.p.type=="UNS")|(self.p.type=="vector")].part)+[""]
+                oplist = sorted(list(df[(df.type=="UNS")|\
+                                        (df.type=="vector")].part))+[""]
             elif(colname=="enzyme"):
                 oplist =["BsaI","BbsI","gibson"]
                 if(prevval == ""):
                     prevval = "BsaI"
             else:
-                oplist = list(self.p[(self.p.type==colname)].part)+[""]
+                oplist = sorted(list(df[df.type==colname].part))+[""]
         if(not (prevval in oplist)):
             oplist+=[prevval]
         return oplist,prevval
@@ -882,6 +895,8 @@ class assemblyFileMaker():
         (a) surrounding parts or
         (b) the appropriate category
         """
+        self.updatePartOptions(None)
+        """
         typewewant = type(widgets.Dropdown())
         #this means we checked the box. Now change drop box's options
         for col in self.outitems:
@@ -891,8 +906,11 @@ class assemblyFileMaker():
                                         col[0].value,item.value,change['new'])
                     item.options=oplist
                     item.value=pval
+        #"""
 
     def on_button_clicked(self,b):
+        """start making the assembly! THis part loads the first row of parts
+        drop downs and populates them with options!"""
         #txtdisabl = True
         b.disabled=True
         self.drop2.disabled = True
@@ -903,19 +921,18 @@ class assemblyFileMaker():
         self.p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
         self.collabels = ["vector1","promoter","UTR","CDS","Terminator","vector2","enzyme","name",""]
         self.outitems = []
-
         self.addWidgetRow(labonly=True)
         self.addWidgetRow(labonly=False)
-        #outitems+=[[labwidg,interwidg]]
         outcols = [widgets.VBox(a) for a in self.outitems ]
         self.bigSheet=widgets.HBox(outcols)
         display(self.bigSheet)
-
-        #self.outcolnum = 0
-    def updatePartOptions(self):
+    def updatePartOptions(self,b=None):
         """update the options available to each drop down, according to what
         values are chosen in the other drop downs. For example, only allow
         parts which are compatible"""
+        if(self.holdup):
+            return
+        self.holdup=True
         maxcols = len(self.outitems)-3
         for colnum in range(maxcols):
             for itemnum in range(len(self.outitems[colnum]))[1:]:
@@ -934,13 +951,33 @@ class assemblyFileMaker():
                 rightoverhang = ""
                 leftvalue = self.outitems[leftitem][itemnum].value
                 rightvalue = self.outitems[rightitem][itemnum].value
-                logiclist = (True,)*len(self.p)
+                logiclist = np.array([True]*len(self.p))
                 if(leftvalue!=""):
-                    logiclist &= (self.p.left==self.p[self.p.part==leftvalue].right.iloc[0])
+                    leftoverhang=self.p[self.p.part == leftvalue].right.iloc[0]
+                    if((self.outitems[-3][itemnum].value!='gibson') \
+                                                and ('UNS' in leftoverhang)):
+                        pass
+                    else:
+                        logiclist &= (self.p.left==leftoverhang)
+
+                    #print(leftoverhang)
                 if(rightvalue!=""):
-                    logiclist &= (self.p.right==self.p[self.p.part==rightvalue].left.iloc[0])
-                oplist = self.generateOptionsList(self.p[logiclist],\
-                                    col[0].value,item.value,change['new'])
+                    rightoverhang=self.p[self.p.part == rightvalue].left.iloc[0]
+                    if((self.outitems[-3][itemnum].value!='gibson') \
+                                                and ('UNS' in rightoverhang)):
+                        pass
+                    else:
+                        logiclist &= (self.p.right==rightoverhang)
+                    #print(rightoverhang)
+                #print("this part wants {} and {}".format(leftoverhang,rightoverhang))
+                self.holdup=True
+                prevval = curitem.value
+                oplist,newval = self.generateOptionsList(self.p[logiclist],\
+                                self.outitems[colnum][0].value,\
+                                prevval,self.listEverything.value)
+                curitem.options = oplist
+                curitem.value = newval
+        self.holdup=False
 
     def incrementWellPos(self,position):
         """increments a 384 well plate location such as A1 to the next logical
@@ -1016,11 +1053,14 @@ class assemblyFileMaker():
                             options=oplist,\
                             value=prevval,\
                             layout=self.ddlay)
+                    interwidg.observe(self.updatePartOptions,names='value')
+
             try:
                 self.outitems[outcolnum]+=[interwidg]
             except IndexError:
                 self.outitems+=[[interwidg]]
             outcolnum +=1
+        self.updatePartOptions()
         for a in self.outitems[-1]:
             try:
                 if(len(self.outitems[0])<=2):
