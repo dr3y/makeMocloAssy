@@ -216,8 +216,10 @@ def echoSinglePart(partDF,partname,partfm,dwell,printstuff=True):
     e1,e2 = echoPipet(partfm,pconc,pwell,dwell,sourceplate=pplate,sptype=platet,\
                                                     printstuff=printstuff)
     return e1,e2,pDseq,pplate,platet
-def echoPipet(partFm,partConc,sourcewell,destwell,sourceplate=None,sptype=None,printstuff=True):
-    """does the calculation to convert femtomoles to volumes, and returns the finished echo line"""
+def echoPipet(partFm,partConc,sourcewell,destwell,sourceplate=None,\
+                                                sptype=None,printstuff=True):
+    """does the calculation to convert femtomoles to volumes, and returns
+    the finished echo line"""
     pvol = (partFm/partConc)*1000
     evol = int(pvol)
     if(evol <= 25):#im not sure what happens when the echo would round to 0.
@@ -230,11 +232,13 @@ def echoPipet(partFm,partConc,sourcewell,destwell,sourceplate=None,sptype=None,p
     else:
         if(printstuff):
             print("===> transfer from {}, plate {} to {}, {} nl".format(sourcewell,sourceplate,destwell,evol))
-        echostring = echoline(sourcewell,destwell,evol,spname =sourceplate,sptype= sptype,platebc = sourceplate)
+        echostring = echoline(sourcewell,destwell,evol,spname =sourceplate,\
+                                        sptype= sptype,platebc = sourceplate)
     return echostring, evol
 
 def makeDseqFromDF(part,partslist,col = "part"):
-    """looks up the part named "part" in the column specified as col, and converts it into a pydna object."""
+    """looks up the part named "part" in the column specified as col, and
+    converts it into a pydna object."""
     pseq = partslist[partslist[col] == part].sequence.iloc[0].lower()
     pcirc = partslist[partslist[col] == part].circular.iloc[0]
     p5pover = int(partslist[partslist[col] == part]["5pend"].iloc[0])
@@ -513,7 +517,7 @@ def chewback(seqtochew,chewamt,end="fiveprime"):
 
 def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
             output = "output.csv",selenzyme=selenzyme,fname="recentassembly",\
-            protocolsDF=None,sepfiles=True,sepfilename="outputLDV.csv",printstuff=True):
+            protocolsDF=None,sepfiles=True,sepfilename="outputLDV.csv",printstuff=True,progbar=None):
     """makes an echo csv using the given list of assemblies and source plate of
     parts..
     inputs:
@@ -553,7 +557,11 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
     prodSeqSpread = "well,part,description,type,left,right,conc (nM),date,numvalue,sequence,circular,5pend,3pend,length\n"
     prevplate = None
     prevtype = None
+    maxprog = float(len(aslist))
+
     for assnum in range(len(aslist)):
+        if(progbar != None):
+            progbar.value=float(assnum+1)/maxprog
         assembly = aslist[assnum:assnum+1] #cuts out one row of dataframe
         dwell = assembly.targwell[assembly.targwell.index[0]] #well where assembly will happen
 
@@ -676,7 +684,11 @@ def makeEchoFile(parts,aslist,gga=ggaPD,partsFm=partsFm,source=source,\
                         outfile += echoline(waterwell,dwell,ewat)
                     else:
                         #print("platewater")
-                        outfile += echoline(waterwell,dwell,ewat,spname =prevplate,sptype=prevtype,platebc = prevplate)
+                        watline = echoline(waterwell,dwell,ewat,spname =prevplate,sptype=prevtype,platebc = prevplate)
+                        if("LDV" in prevtype):
+                            outfile2+=watline
+                        else:
+                            outfile += watline
                     #add water to the well!
                 if(printstuff):
                     print("")
@@ -768,6 +780,7 @@ class assemblyFileMaker():
         self.eblay = widgets.Layout(width='50px',height='30px')
         self.sblay = widgets.Layout(width='100px',height='30px')
         self.Vboxlay = widgets.Layout(width='130px',height='67px')
+        self.textlay = widgets.Layout(width='200px',height='30px')
         self.PlateLetters="ABCDEFGHIJKLMNOP"
         self.PlateNumbers=(1,2,3,4,5,6,7,8,9,10,11,12,\
                                 13,14,15,16,17,18,19,20,21,22,23,24)
@@ -785,6 +798,7 @@ class assemblyFileMaker():
             value="untitled",
             placeholder = "type something",
             description='Assembly File Name:',
+            layout=self.textlay,
             disabled=False
         )
         self.DestWell = widgets.Text(
@@ -794,11 +808,19 @@ class assemblyFileMaker():
             layout=self.Vboxlay,
             disabled=True
         )
+        self.AddCols = widgets.IntText(
+            value=0,
+            placeholder = "type something",
+            description='Extra Cols:',
+            layout=self.Vboxlay,
+            #disabled=True
+        )
         self.drop2 = widgets.Dropdown(
             options=self.parts,
             width=100,
             #value=2,
             description='parts list:',
+            layout=self.textlay,
         )
         #print(self.drop2.style.keys)
         self.but = widgets.Button(
@@ -824,7 +846,7 @@ class assemblyFileMaker():
         self.listEverything.observe(self.on_listEverything_changed,names='value')
         self.cbox = widgets.HBox([
                     widgets.VBox([self.fname1,self.listEverything]),\
-                    widgets.VBox([self.drop2,self.DestWell]),\
+                    widgets.VBox([self.drop2,widgets.HBox([self.DestWell,self.AddCols])]),\
                     widgets.VBox([self.but,self.finbut],layout=self.Vboxlay)])
         display(self.cbox)
     def add_row(self,b):
@@ -916,10 +938,17 @@ class assemblyFileMaker():
         self.drop2.disabled = True
         self.finbut.disabled = False
         self.DestWell.disabled = False
+        self.AddCols.disabled = True
         dfs = pd.read_excel(self.drop2.value,None)
         sheetlist = list(dfs.keys())
         self.p = pd.DataFrame.append(dfs["parts_1"],dfs["Gibson"])
         self.collabels = ["vector1","promoter","UTR","CDS","Terminator","vector2","enzyme","name",""]
+
+        if(self.AddCols.value>0):
+            newclabeld = self.collabels
+            for x in range(self.AddCols.value):
+                newclabeld=newclabeld[:-4]+["newcol"+str(x+1)]+newclabeld[-4:]
+            self.collabels = newclabeld
         self.outitems = []
         self.addWidgetRow(labonly=True)
         self.addWidgetRow(labonly=False)
@@ -1101,6 +1130,11 @@ def makeInteractive(mypath=".",printstuff=True):
     #display(button)
     #print(oplist)
     def on_button_clicked(b):
+        pbar = widgets.FloatProgress(
+            min=0,
+            max=1.0
+        )
+        display(pbar)
         dfs = pd.read_excel(drop2.value,None)
         #print(drop1.value)
         if(drop1.value[-4:]=="xlsx" or drop1.value[-3:]=="xls"):
@@ -1113,7 +1147,7 @@ def makeInteractive(mypath=".",printstuff=True):
         makeEchoFile(p,x,fname = drop1.value, \
                     output = os.path.join(".","output","output.csv"),\
                     sepfilename=os.path.join(".","output","outputLDV.csv"),\
-                    printstuff=printstuff)
+                    printstuff=printstuff,progbar=pbar)
 
         #print(drop1.value+" and "+drop2.value)
 
